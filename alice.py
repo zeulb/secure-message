@@ -6,7 +6,6 @@ import sys
 import pickle
 import os
 
-MESSAGE_COUNT = 10
 PUBLIC_KEY_FILE = 'bob-python.pub'
 OUTPUT_FILE = 'msgs.txt'
 BUFFER_SIZE = 1024
@@ -42,16 +41,7 @@ class Alice():
       public_key = RSA.importKey(f.read())
     return PKCS1_OAEP.new(public_key)
 
-  def connect(self):
-    # get public key from file
-    public_key = self.get_public_key()
-
-    # encrypt session key
-    self.encrypt_session_key(public_key)
-
-    # send encrypted session key
-    self.send_message(self.encrypted_session_key)
-
+  def receive_all_message(self):
     messages = ''
 
     while(True):
@@ -60,6 +50,9 @@ class Alice():
         break
       messages += message
 
+    return messages
+
+  def decode_message(self, messages):
     message_list = messages.split(".")
 
     full_message = ''
@@ -70,11 +63,35 @@ class Alice():
       real_message = pickle.loads(message+'.')
       full_message += self.aes.decrypt(real_message)
 
+    return full_message
+
+  def write_to_file(self, message):
+
     with open(OUTPUT_FILE, 'w') as f:
       f.seek(0)
       f.truncate()
-      f.write(full_message)
+      f.write(message)
 
+  def connect(self):
+    # get public key from file
+    public_key = self.get_public_key()
+
+    # encrypt session key
+    self.encrypt_session_key(public_key)
+
+    # send encrypted session key
+    self.send_message(self.encrypted_session_key)
+
+    # receive all message
+    messages = self.receive_all_message()
+
+    # get plaintext message
+    messages = self.decode_message(messages)
+
+    # write to file
+    self.write_to_file(messages)
+
+    # close socket
     self.socket.close()
 
 
